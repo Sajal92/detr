@@ -1,8 +1,8 @@
 
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 """
-COCO dataset which returns image_id for evaluation.
-Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/coco_utils.py
+Face dataset which returns image_id for evaluation.
+Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/Face_utils.py
 """
 from pathlib import Path
 
@@ -14,14 +14,14 @@ from pycocotools import mask as coco_mask
 import datasets.transforms as T
 
 
-class CocoDetection(torchvision.datasets.CocoDetection):
+class FaceDetection(torchvision.datasets.CocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks):
-        super(CocoDetection, self).__init__(img_folder, ann_file)
+        super(FaceDetection, self).__init__(img_folder, ann_file)
         self._transforms = transforms
-        self.prepare = ConvertCocoPolysToMask(return_masks)
+        self.prepare = ConvertFacePolysToMask(return_masks)
 
     def __getitem__(self, idx):
-        img, target = super(CocoDetection, self).__getitem__(idx)
+        img, target = super(FaceDetection, self).__getitem__(idx)
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
         img, target = self.prepare(img, target)
@@ -30,11 +30,11 @@ class CocoDetection(torchvision.datasets.CocoDetection):
         return img, target
 
 
-def convert_coco_poly_to_mask(segmentations, height, width):
+def convert_Face_poly_to_mask(segmentations, height, width):
     masks = []
     for polygons in segmentations:
-        rles = coco_mask.frPyObjects(polygons, height, width)
-        mask = coco_mask.decode(rles)
+        rles = Face_mask.frPyObjects(polygons, height, width)
+        mask = Face_mask.decode(rles)
         if len(mask.shape) < 3:
             mask = mask[..., None]
         mask = torch.as_tensor(mask, dtype=torch.uint8)
@@ -47,7 +47,7 @@ def convert_coco_poly_to_mask(segmentations, height, width):
     return masks
 
 
-class ConvertCocoPolysToMask(object):
+class ConvertFacePolysToMask(object):
     def __init__(self, return_masks=False):
         self.return_masks = return_masks
 
@@ -73,7 +73,7 @@ class ConvertCocoPolysToMask(object):
 
         if self.return_masks:
             segmentations = [obj["segmentation"] for obj in anno]
-            masks = convert_coco_poly_to_mask(segmentations, h, w)
+            masks = convert_Face_poly_to_mask(segmentations, h, w)
 
         keypoints = None
         if anno and "keypoints" in anno[0]:
@@ -100,7 +100,7 @@ class ConvertCocoPolysToMask(object):
         if keypoints is not None:
             target["keypoints"] = keypoints
 
-        # for conversion to coco api
+        # for conversion to Face api
         area = torch.tensor([obj["area"] for obj in anno])
         iscrowd = torch.tensor([obj["iscrowd"] if "iscrowd" in obj else 0 for obj in anno])
         target["area"] = area[keep]
@@ -112,7 +112,7 @@ class ConvertCocoPolysToMask(object):
         return image, target
 
 
-def make_coco_transforms(image_set):
+def make_Face_transforms(image_set):
 
     normalize = T.Compose([
         T.ToTensor(),
@@ -145,14 +145,14 @@ def make_coco_transforms(image_set):
 
 
 def build(image_set, args):
-    root = Path(args.coco_path)
-    assert root.exists(), f'provided COCO path {root} does not exist'
+    root = Path(args.data_path)
+    assert root.exists(), f'provided Face path {root} does not exist'
     mode = 'instances'
     PATHS = {
-        "train": (root / "train2017", root / "annotations" / f'{mode}_train2017.json'),
-        "val": (root / "val2017", root / "annotations" / f'{mode}_val2017.json'),
+        "train": (root / "WIDER_train/images", root / "annotations" / f'train.json'),
+        "val": (root / "WIDER_val/images", root / "annotations" / f'val.json'),
     }
 
     img_folder, ann_file = PATHS[image_set]
-    dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set), return_masks=args.masks)
+    dataset = FaceDetection(img_folder, ann_file, transforms=make_Face_transforms(image_set), return_masks=args.masks)
     return dataset
